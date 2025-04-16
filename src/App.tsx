@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback, JSX } from 'react'
+import { useState, useEffect, useRef, useCallback, JSX } from 'react'
 
-const CHAR_RENDER_DELAY = 50 // 타이핑 효과 딜레이 (ms)
+const CHAR_RENDER_DELAY = 20 // 타이핑 효과 딜레이 (ms)
 
 function App(): JSX.Element {
   // 상태 변수
@@ -85,7 +85,6 @@ function App(): JSX.Element {
         if (receivedData === 'STREAM_END') {
           console.log('스트림 종료 메시지 수신')
           setIsStreaming(false)
-          //   setDisplayedText(prev => prev + '\n--- Stream End ---\n') // 스트림 종료 표시
         } else {
           setChunkQueue(prev => [...prev, receivedData])
         }
@@ -94,7 +93,6 @@ function App(): JSX.Element {
           if (text === 'STREAM_END') {
             console.log('스트림 종료 메시지 수신 (Blob)')
             setIsStreaming(false)
-            // setDisplayedText(prev => prev + '\n--- Stream End ---\n') // 스트림 종료 표시
           } else {
             setChunkQueue(prev => [...prev, text])
           }
@@ -176,6 +174,27 @@ function App(): JSX.Element {
     }
   }
 
+  const stopStreaming = (): void => {
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send('STOP_STREAM')
+      setIsStreaming(false)
+      clearCharRenderInterval()
+    }
+  }
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>): void => {
+    event.preventDefault()
+    const input = event.currentTarget.elements[0] as HTMLInputElement
+    const message = input.value
+    setDisplayedText(
+      prev =>
+        prev +
+        '\n' +
+        `<div style="text-align: right; font-weight: bold;">${message}</div>`
+    )
+    startStreaming()
+  }
+
   const endWebsocket = (): void => {
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
       ws.current.close()
@@ -185,7 +204,6 @@ function App(): JSX.Element {
   // --- JSX 렌더링 ---
   return (
     <div>
-      <h1>React WebSocket Stream Client (Accumulate + AutoScroll)</h1>
       <p>연결 상태: {isConnected ? '연결됨' : '끊김'}</p>
       <p>
         스트리밍 상태:{' '}
@@ -198,8 +216,11 @@ function App(): JSX.Element {
         <button onClick={endWebsocket}>웹소켓 종료</button>
       )}
 
-      <button onClick={startStreaming} disabled={!isConnected || isStreaming}>
-        {isStreaming ? '스트리밍 중...' : '메세지 받기'}
+      <button
+        onClick={isStreaming ? stopStreaming : startStreaming}
+        style={{ width: '200px' }}
+      >
+        {isStreaming ? '중지' : '메세지 받기'}
       </button>
 
       <h2>수신된 텍스트:</h2>
@@ -215,9 +236,12 @@ function App(): JSX.Element {
           whiteSpace: 'pre-wrap',
           fontFamily: 'monospace',
         }}
-      >
-        {displayedText}
-      </div>
+        dangerouslySetInnerHTML={{ __html: displayedText }}
+      />
+      <form onSubmit={handleSubmit}>
+        <input type="text" />
+        <button type="submit">전송</button>
+      </form>
     </div>
   )
 }

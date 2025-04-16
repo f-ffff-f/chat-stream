@@ -7,7 +7,7 @@ const wss = new WebSocket.Server({ port: 8080 })
 console.log('웹소켓 서버 시작됨 (포트: 8080)')
 
 // 랜덤 시간 간격(ms) 생성 함수 (예: 100ms ~ 500ms)
-function getRandomDelay(min = 100, max = 500) {
+function getRandomDelay(min = 1, max = 500) {
   return Math.floor(Math.random() * (max - min + 1)) + min
 }
 // --- ---
@@ -33,7 +33,7 @@ wss.on('connection', ws => {
       }
 
       let messagesSent = 0
-      const maxMessagesToSend = 50 // 보낼 청크 개수
+      const maxMessagesToSend = 30 // 보낼 청크 개수
 
       function sendNextChunk() {
         if (messagesSent >= maxMessagesToSend) {
@@ -65,7 +65,13 @@ wss.on('connection', ws => {
         ws.streamTimeoutId = setTimeout(sendNextChunk, delay)
       }
 
-      ws.streamTimeoutId = setTimeout(sendNextChunk, getRandomDelay(10, 50))
+      ws.streamTimeoutId = setTimeout(sendNextChunk, getRandomDelay(1, 50))
+    } else if (messageString === 'STOP_STREAM') {
+      console.log('스트림 중단 요청 받음.')
+      if (ws.streamTimeoutId) {
+        clearTimeout(ws.streamTimeoutId)
+        ws.streamTimeoutId = null
+      }
     } else {
       console.log('알 수 없는 메시지:', messageString)
     }
@@ -88,7 +94,5 @@ wss.on('connection', ws => {
     }
   })
 
-  ws.send(
-    '웹소켓 서버에 연결되었습니다! "메세지 받기" 버튼을 누르면 랜덤 스트림을 시작합니다.'
-  )
+  ws.send('웹소켓 서버에 연결되었습니다!')
 })

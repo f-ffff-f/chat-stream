@@ -1,8 +1,9 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import './index.css'
+import './MockVersion/ws-server/ws'
+
 // import App from './App.tsx'
-import MockServerApp from './MockServerApp.tsx'
+import MockServerApp from './MockVersion/App.tsx'
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     {/* <App /> */}

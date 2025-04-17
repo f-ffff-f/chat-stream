@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback, JSX } from 'react'
-import { MockWebSocket } from './MockServer'
+import { CloseEvent, ErrorEvent, MessageEvent } from './shared/types'
+
+import { WebSocket } from './WebSocket'
 
 const CHAR_RENDER_DELAY = 20 // 타이핑 효과 딜레이 (ms)
 
@@ -11,7 +13,7 @@ function App(): JSX.Element {
   const [chunkQueue, setChunkQueue] = useState<string[]>([])
 
   // Ref 변수
-  const ws = useRef<MockWebSocket | null>(null)
+  const webSocketRef = useRef<WebSocket | null>(null)
   const charRenderIntervalId = useRef<number | null>(null)
   const currentChunkRef = useRef<string | null>(null)
   const currentCharIndexRef = useRef<number>(0)
@@ -47,9 +49,8 @@ function App(): JSX.Element {
 
     if (charIndex < chunk.length) {
       const nextChar = chunk[charIndex]
-      setDisplayedText(prev => prev + nextChar) // 글자 추가
+      setDisplayedText(prev => prev + nextChar)
       currentCharIndexRef.current++
-      // 스크롤은 displayedText 변경 후 effect에서 처리
     } else {
       clearCharRenderInterval()
     }
@@ -64,29 +65,35 @@ function App(): JSX.Element {
     setIsStreaming(false)
     setIsConnected(false) // 연결 상태 초기화
 
-    if (ws.current && ws.current.readyState < MockWebSocket.CLOSING) {
+    if (
+      webSocketRef.current &&
+      webSocketRef.current.readyState < WebSocket.CLOSING
+    ) {
       console.log('이미 연결되어 있거나 연결 중입니다.')
       return
     }
 
-    // 실제 WebSocket 대신 MockWebSocket 사용
-    ws.current = new MockWebSocket('ws://mock-server')
+    // 실제 WebSocket 대신 WebSocket 사용
+    webSocketRef.current = new WebSocket('webSocketRef://-server')
     console.log('모의 웹소켓 서버에 연결 시도 중...')
 
-    ws.current.onopen = () => {
+    webSocketRef.current.onopen = () => {
       console.log('모의 웹소켓 연결 성공!')
       setIsConnected(true)
       setDisplayedText('서버에 연결되었습니다.\n')
 
       // 연결 성공 시 초기 메시지를 보내는 가짜 서버 동작 시뮬레이션
       setTimeout(() => {
-        if (ws.current && ws.current.onmessage) {
-          ws.current.onmessage({ data: '웹소켓 서버에 연결되었습니다!' })
+        if (webSocketRef.current && webSocketRef.current.onmessage) {
+          webSocketRef.current.onmessage({
+            type: 'message',
+            data: '웹소켓 서버에 연결되었습니다!',
+          })
         }
       }, 100)
     }
 
-    ws.current.onmessage = (event: MessageEvent) => {
+    webSocketRef.current.onmessage = (event: MessageEvent) => {
       const receivedData = event.data
 
       if (typeof receivedData === 'string') {
@@ -96,21 +103,21 @@ function App(): JSX.Element {
         } else {
           setChunkQueue(prev => [...prev, receivedData])
         }
-      } else if (receivedData instanceof Blob) {
-        receivedData.text().then((text: string) => {
-          if (text === 'STREAM_END') {
-            console.log('스트림 종료 메시지 수신 (Blob)')
-            setIsStreaming(false)
-          } else {
-            setChunkQueue(prev => [...prev, text])
-          }
-        })
+        //   } else if (receivedData instanceof Blob) {
+        //     receivedData.text().then((text: string) => {
+        //       if (text === 'STREAM_END') {
+        //         console.log('스트림 종료 메시지 수신 (Blob)')
+        //         setIsStreaming(false)
+        //       } else {
+        //         setChunkQueue(prev => [...prev, text])
+        //       }
+        //     })
       } else {
         console.warn('수신된 데이터 타입 처리 불가:', typeof receivedData)
       }
     }
 
-    ws.current.onclose = (event: CloseEvent) => {
+    webSocketRef.current.onclose = (event: CloseEvent) => {
       console.log('웹소켓 연결 끊김:', event.reason, `코드: ${event.code}`)
       setIsConnected(false)
       setIsStreaming(false)
@@ -120,7 +127,7 @@ function App(): JSX.Element {
       )
     }
 
-    ws.current.onerror = (error: Event) => {
+    webSocketRef.current.onerror = (error: ErrorEvent) => {
       console.error('웹소켓 오류 발생', error)
       setIsConnected(false)
       setIsStreaming(false)
@@ -134,9 +141,12 @@ function App(): JSX.Element {
     connectWebSocket()
     return (): void => {
       clearCharRenderInterval()
-      if (ws.current && ws.current.readyState === MockWebSocket.OPEN) {
+      if (
+        webSocketRef.current &&
+        webSocketRef.current.readyState === WebSocket.OPEN
+      ) {
         console.log('웹소켓 연결 종료 중...')
-        ws.current.close()
+        webSocketRef.current.close()
       }
     }
   }, [connectWebSocket, clearCharRenderInterval])
@@ -164,7 +174,10 @@ function App(): JSX.Element {
 
   // --- 스트림 시작 요청 함수 ---
   const startStreaming = (): void => {
-    if (ws.current && ws.current.readyState === MockWebSocket.OPEN) {
+    if (
+      webSocketRef.current &&
+      webSocketRef.current.readyState === WebSocket.OPEN
+    ) {
       // 이전 상태 초기화 (큐와 인터벌만)
       setChunkQueue([])
       clearCharRenderInterval()
@@ -174,7 +187,7 @@ function App(): JSX.Element {
 
       const startMessage = 'START_STREAM'
       console.log('서버에 스트림 시작 요청:', startMessage)
-      ws.current.send(startMessage)
+      webSocketRef.current.send(startMessage)
       setIsStreaming(true)
     } else {
       console.log('웹소켓이 연결되지 않았습니다.')
@@ -183,8 +196,11 @@ function App(): JSX.Element {
   }
 
   const stopStreaming = (): void => {
-    if (ws.current && ws.current.readyState === MockWebSocket.OPEN) {
-      ws.current.send('STOP_STREAM')
+    if (
+      webSocketRef.current &&
+      webSocketRef.current.readyState === WebSocket.OPEN
+    ) {
+      webSocketRef.current.send('STOP_STREAM')
       setIsStreaming(false)
       clearCharRenderInterval()
     }
@@ -205,8 +221,11 @@ function App(): JSX.Element {
   }
 
   const endWebsocket = (): void => {
-    if (ws.current && ws.current.readyState === MockWebSocket.OPEN) {
-      ws.current.close()
+    if (
+      webSocketRef.current &&
+      webSocketRef.current.readyState === WebSocket.OPEN
+    ) {
+      webSocketRef.current.close()
     }
   }
 

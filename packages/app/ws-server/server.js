@@ -1,4 +1,4 @@
-// server.js
+// index.js
 const WebSocket = require('ws')
 const { generateRandomChunk } = require('./generateRandomChunk')
 // 8080 포트에서 웹소켓 서버를 시작합니다.

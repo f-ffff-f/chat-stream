@@ -27,7 +27,7 @@ eventEmitter.on('destroy-server-instance', (url: string) => {
 })
 
 // 서버 로직
-export class ws {
+class ws {
   private _emitter: EventEmitter
   private _url: string
   private _isConnected: boolean = false

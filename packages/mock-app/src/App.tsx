@@ -1,3 +1,5 @@
+import './ws-server/ws.ts'
+
 import { useState, useEffect, useRef, useCallback, JSX } from 'react'
 import { CloseEvent, ErrorEvent, MessageEvent } from './shared/types'
 

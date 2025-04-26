@@ -8,8 +8,7 @@
         "build": "tsc -b && vite build",
         "lint": "eslint .",
         "preview": "vite preview",
-        "typecheck": "tsc --noEmit",
-        "start": "concurrently \"vite preview\" \"node ws-server/server.js\""
+        "typecheck": "tsc --noEmit"
     },
     "dependencies": {
         "react": "^19.0.0",

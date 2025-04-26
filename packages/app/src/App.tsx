@@ -68,7 +68,7 @@ function App(): JSX.Element {
       return
     }
 
-    const serverAddress = 'ws://localhost:8080'
+    const serverAddress = import.meta.env.VITE_WS_SERVER_ADDRESS
     ws.current = new WebSocket(serverAddress)
     console.log('웹소켓 서버에 연결 시도 중...')
 

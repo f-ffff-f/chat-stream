@@ -9,7 +9,7 @@
         "lint": "eslint .",
         "preview": "vite preview",
         "typecheck": "tsc --noEmit",
-        "start-server": "node ws-server/server.js"
+        "start": "concurrently \"vite preview\" \"node ws-server/server.js\""
     },
     "dependencies": {
         "react": "^19.0.0",
